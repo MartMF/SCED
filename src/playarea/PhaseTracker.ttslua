@@ -1,3 +1,8 @@
+local PlayermatApi     = require("playermat/PlayermatApi")
+local MythosAreaApi    = require("mythos/MythosAreaApi")
+local SearchLib        = require("util/SearchLib")
+
+
 local PHASE_NAMES = {
   "I. Mythos Phase",
   "II. Investigation Phase",
@@ -14,12 +19,15 @@ local PHASE_IMAGES = {
 function onSave()
   return JSON.encode({
     phaseId = phaseId,
-    broadcastChange = broadcastChange
+    broadcastChange = broadcastChange,
+    broadcastChangeVerbosity = broadcastChangeVerbosity
   })
 end
 
 function loadFromSaveTable(savedData)
   for var, val in pairs(JSON.decode(savedData)) do
+    printToAll(var)
+    printToAll(val, 'Teal')
     _G[var] = val
   end
 end
@@ -28,8 +36,10 @@ function onLoad(savedData)
   if savedData and savedData ~= "" then
     loadFromSaveTable(savedData)
   else
+    printToAll('onLoadOtherWay')
     phaseId = 1
     broadcastChange = false
+    broadcastChangeVerbosity = false
   end
 
   self.createButton({
@@ -38,18 +48,33 @@ function onLoad(savedData)
     function_owner = self,
     width          = 600,
     height         = 600,
-    color          = { r = 0, g = 0, b = 0, a = 0 }
+    matColor          = { r = 0, g = 0, b = 0, a = 0 }
   })
 
   self.addContextMenuItem("Toggle Broadcasting", updateBroadcast)
+  self.addContextMenuItem("Toggle Verbosity Broadcasting", updateBroadcastVerbosity)
 end
 
 function updateBroadcast(playerColor)
+  -- Changes (toggles) the if the phase changes are broadcast or not
   Player[playerColor].clearSelectedObjects()
   for _, tracker in ipairs(getObjectsWithTag("LinkedPhaseTracker")) do
     tracker.setVar("broadcastChange", not broadcastChange)
+    if not broadcastChange then
+      -- If broadcastChange is off, broadcastChangeVerbosity should also be
+      tracker.setVar("broadcastChangeVerbosity", false)
+    end
   end
   broadcastToAll("Broadcasting phase changes has been " .. (broadcastChange and "enabled." or "disabled."))
+end
+
+function updateBroadcastVerbosity(playerColor)
+  -- Changes (toggles) the if the phase changes are broadcast with a lot of verbosity or not
+  Player[playerColor].clearSelectedObjects()
+  for _, tracker in ipairs(getObjectsWithTag("LinkedPhaseTracker")) do
+    tracker.setVar("broadcastChangeVerbosity", not broadcastChangeVerbosity) -- Toggle  → Set the opposite
+  end
+broadcastToAll("Broadcasting phase changes in (Verbosity mode) has been " .. (broadcastChangeVerbosity and "enabled." or "disabled."))
 end
 
 function changeState(_, _, isRightClick)
@@ -62,27 +87,161 @@ function changeState(_, _, isRightClick)
   end
 
   -- broadcast if option is enabled
-  if broadcastChange then
+  if broadcastChange and not broadcastChangeVerbosity then
     broadcastToAll(PHASE_NAMES[newId])
+  elseif broadcastChange and broadcastChangeVerbosity then
+    expressChangeWithVerbosity(newId)
   end
 
   -- manipulate data and then respawn
   local data = self.getData()
   data["CustomImage"]["ImageURL"] = PHASE_IMAGES[newId]
   data["CustomImage"]["ImageSecondaryURL"] = PHASE_IMAGES[newId]
-  data["LuaScriptState"] = "{\"broadcastChange\":" .. tostring(broadcastChange) .. ",\"phaseId\":" .. newId .. "}"
-
+  data["LuaScriptState"] = "{\"broadcastChange\":" ..
+      tostring(broadcastChange) ..
+      ",\"phaseId\":" .. newId .. ",\"broadcastChangeVerbosity\":" .. tostring(broadcastChangeVerbosity) .. "}"
+    
   -- update all trackers with tag
-  for _, tracker in ipairs(getObjectsWithTag("LinkedPhaseTracker")) do
+  for i, tracker in ipairs(getObjectsWithTag("LinkedPhaseTracker")) do
     local pos = tracker.getPosition()
     local rot = tracker.getRotation()
     local scale = tracker.getScale()
     tracker.destruct()
-    spawnObjectData({
+    spawnObjectData({ -- Esto es una funcion de tts
       data     = data,
       position = pos,
       rotation = rot,
       scale    = scale
     })
   end
+end
+
+-- Added
+
+function expressChangeWithVerbosity(newId)
+  -- This function shows every change in the Phase tracker
+
+  -- Load data of the Agenda Card
+  md = getDoomMetadata()
+  if type(md) == "table" and next(md) == nil then
+    printToAll('Nometadata')
+    md = { id = "000000" }
+    return nil
+  end
+
+  -- Acording to the phase and Agenda, show some messages
+  if newId == 1 then
+    broadcastToAll('End of the round')
+    printEndOfPhaseEffects(md.id, 4)
+    print('\n\n')
+    broadcastToAll('Mythos Phase begins', {r=1, g=0, b=0})
+  
+  elseif newId == 2 then
+    broadcastToAll('End of Mythos Phase', {r=1, g=0, b=0})
+    printEndOfPhaseEffects(md.id, 1)
+    broadcastToAll('Investigation Phase begins.', {r=1, g=1, b=0})
+    showHandResourceInfo()
+    
+  elseif newId == 3 then
+    broadcastToAll('End of Investigation Phase', {r=1, g=1, b=0})
+    printEndOfPhaseEffects(md.id, 2)
+    broadcastToAll('Enemy Phase begins.', {r=0, g=1, b=0})
+
+  elseif newId == 4 then
+    broadcastToAll('End of Enemy Phase', {r=0, g=1, b=0})
+    printEndOfPhaseEffects(md.id, 3)
+    broadcastToAll('Upkeep Phase begins.', {r=1, g=1, b=0})
+  end
+end
+
+
+function getDoomMetadata()
+  -- This takes the metadata of the Agenda Card
+  -- We use this to plot any kind of Phase effect of the Agenda Card
+  -- Yet to implement the Act
+  local agendaPos = MythosAreaApi.getAgendaPosition()
+  local searchResult = SearchLib.atPosition(agendaPos, "isCardOrDeck")
+
+  if #searchResult == 1 then
+    local obj = searchResult[1]
+    if obj.type == "Card" then
+      return JSON.decode(obj.getGMNotes()) or {}
+    else
+      -- handle agenda deck
+      local containedObjects = obj.getData().ContainedObjects
+      local topCardData = containedObjects[#containedObjects]
+      return JSON.decode(topCardData.GMNotes) or {}
+    end
+  end
+  return {}
+end
+
+
+function showHandResourceInfo()
+  -- This shows how many cards and resources has every MatPlayer
+  local matColors = Player.getAvailableColors()
+  for _, matColor in ipairs(matColors) do
+    local player = Player[matColor]
+    local cards = player.getHandObjects(1)
+    local num = #cards
+    local resources = PlayermatApi.getCounterValue(matColor, "ResourceCounter")
+    printToAll(matColor .. ' has '  .. num .. ' cards in hand and ' .. resources .. ' resources.')
+  end
+end
+
+local endOfPhaseEffects = {
+    ["01107"] = {
+        [3] = { message = "The agenda says: move every unengaged Ghoul enemy" },
+        [4] = { message = "The agenda says: At the end of the round, place doom according to Ghouls" }
+    },
+
+    ["03121"] = {
+        [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
+    },
+    ["03122"] = {
+        [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
+    },
+    ["03123"] = {
+        [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
+    },
+    ["03045"] = {
+        [1] = { message = "Emmissary deals horror in its location and connecting" }
+    }
+}
+
+local StartOfPhaseEffects = {
+    ["03121"] = {
+        [1] = { message = "Do not add doom to the doom counter" }
+    },
+
+    ["03122"] = {
+        [1] = { message = "Do not add doom to the doom counter" }
+    },
+    ["03123"] = {
+        [1] = { message = "Do not add doom to the doom counter" }
+    }
+}
+
+function printEndOfPhaseEffects(id, phase)
+  --
+  local pair_number_message = endOfPhaseEffects[id]
+  if pair_number_message then
+    local message = pair_number_message[phase]
+    if message then
+      broadcastToAll(message.message)
+    end
+  end
+  return nil -- no encontrado
+end
+
+function printStartOfPhaseEffects(id, phase)
+  --
+  local pair_number_message = StartOfPhaseEffects[id]
+  if pair_number_message then
+    local message = pair_number_message[phase]
+    if message then
+      broadcastToAll(message.message)
+    end
+  end
+  return nil -- no encontrado
 end

@@ -9,5 +9,19 @@
     "need-check-nil",
     "assign-type-mismatch",
     "param-type-mismatch"
-  ]
+  ],
+  "workbench.colorTheme": "Default Dark+",
+  "workbench.colorCustomizations": {
+    "titleBar.activeBackground": "#555500",
+    "titleBar.activeForeground": "#ccccff",
+    "debugToolBar.background": "#003344",
+    "activityBar.background": "#777777",
+    "titleBar.border": "#006688",
+    "menu.border": "#006688",
+    "editor.background": "#1f1f00",
+    "editor.inactiveSelectionBackground": "#ff0000",
+    "editor.hoverHighlightBackground": "#aa5500",
+    "editorPane.background": "#00ff00",
+    "editorGhostText.background": "#00ff00",
+  },
 }

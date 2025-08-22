@@ -1,0 +1,92 @@
+local PHASE_NAMES = {
+  "I. Mythos Phase",
+  "II. Investigation Phase",
+  "III. Enemy Phase",
+  "IV. Upkeep Phase"
+}
+local PHASE_IMAGES = {
+  "https://steamusercontent-a.akamaihd.net/ugc/933819604050849085/9E22AFD7B0157140FC177DBCCBCB1D61D6A0329F/",
+  "https://steamusercontent-a.akamaihd.net/ugc/933819604050885611/845B5AA915F30492B5F34864698B9C3627FA5763/",
+  "https://steamusercontent-a.akamaihd.net/ugc/982233321870235122/492996D07ABF6DDA4B605A3013C4892839DCF1F3/",
+  "https://steamusercontent-a.akamaihd.net/ugc/982233321870237261/C287CAED2423970F33E72D6C7415CBEC6794C533/"
+}
+
+function onSave()
+  return JSON.encode({
+    phaseId = phaseId,
+    broadcastChange = broadcastChange,
+    broadcastChangeVerbosity = broadcastChangeVerbosity,
+  })
+end
+
+function loadFromSaveTable(savedData)
+  broadcastToAll('This happened1234abc')
+  for var, val in pairs(JSON.decode(savedData)) do
+    _G[var] = val
+  end
+end
+
+function onLoad(savedData)
+  if savedData and savedData ~= "" then
+    loadFromSaveTable(savedData)
+  else
+    printToAll('onload way')
+    phaseId = 1
+    broadcastChange = false
+    broadcastChangeVerbosity = false
+  end
+
+  self.createButton({
+    tooltip        = "change phase",
+    click_function = "changeState",
+    function_owner = self,
+    width          = 600,
+    height         = 600,
+    color          = { r = 0, g = 0, b = 0, a = 0 }
+  })
+
+  self.addContextMenuItem("Toggle Broadcasting", updateBroadcast)
+end
+
+function updateBroadcast(playerColor)
+  Player[playerColor].clearSelectedObjects()
+  for _, tracker in ipairs(getObjectsWithTag("LinkedPhaseTracker")) do
+    tracker.setVar("broadcastChange", not broadcastChange)
+  end
+  broadcastToAll("Broadcasting phase changes has been " .. (broadcastChange and "enabled." or "disabled."))
+end
+
+function changeState(_, _, isRightClick)
+  -- get newId for all trackers
+  local newId = phaseId + (isRightClick and -1 or 1)
+  if newId == 0 then
+    newId = 4
+  elseif newId == 5 then
+    newId = 1
+  end
+
+  -- broadcast if option is enabled
+  if broadcastChange then
+    broadcastToAll(PHASE_NAMES[newId])
+  end
+
+  -- manipulate data and then respawn
+  local data = self.getData()
+  data["CustomImage"]["ImageURL"] = PHASE_IMAGES[newId]
+  data["CustomImage"]["ImageSecondaryURL"] = PHASE_IMAGES[newId]
+  data["LuaScriptState"] = "{\"broadcastChange\":" .. tostring(broadcastChange) .. ",\"phaseId\":" .. newId .. "}"
+
+  -- update all trackers with tag
+  for _, tracker in ipairs(getObjectsWithTag("LinkedPhaseTracker")) do
+    local pos = tracker.getPosition()
+    local rot = tracker.getRotation()
+    local scale = tracker.getScale()
+    tracker.destruct()
+    spawnObjectData({
+      data     = data,
+      position = pos,
+      rotation = rot,
+      scale    = scale
+    })
+  end
+end
