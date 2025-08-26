@@ -9,5 +9,40 @@
     "need-check-nil",
     "assign-type-mismatch",
     "param-type-mismatch"
-  ]
+  ],
+
+  "Lua.workspace.ignoreDir": [
+    "**/*.py",
+    "**/*.po",
+    "**/*.md",
+    "**/CODEOWNERS",
+    "**/.gitignore",
+    "**/.gitattributes",
+    "**/*.json",
+    "**/*.yml",
+    "**/*.luascriptstate",
+    "**/*.gmnotes",
+    "**/*.xml",
+    "**/*.daniel",
+    "**/*.ps1",
+  ],
+  "workbench.colorTheme": "Default Dark+",
+  "workbench.colorCustomizations": {
+    
+    "titleBar.activeBackground": "#404000",
+    "titleBar.activeForeground": "#aaaacc",
+
+    "titleBar.inactiveBackground": "#111100",
+    "titleBar.inactiveForeground": "#555577",
+
+    "editor.background": "#202000",       // oscuro con matiz amarillento
+    "editor.foreground": "#aaaadd",
+    
+    "editor.lineHighlightBackground": "#ffff0022",
+    "editor.selectionBackground": "#ffff0033",
+
+    "editor.wordHighlightBackground": "#44004455", // ocurrencias de lectura
+    "editor.wordHighlightStrongBackground": "#66660055", // ocurrencias de escritura
+
+  },
 }

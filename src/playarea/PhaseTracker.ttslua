@@ -7,6 +7,7 @@ local MythosAreaApi    = require("mythos/MythosAreaApi")
 local SearchLib        = require("util/SearchLib")
 
 
+
 local PHASE_NAMES = {
   "I. Mythos Phase",
   "II. Investigation Phase",
@@ -54,9 +55,21 @@ function onLoad(savedData)
     matColor          = { r = 0, g = 0, b = 0, a = 0 }
   })
 
+  log('PhaseTracker loaded with phaseId ' .. phaseId ..
+      ', broadcastChange ' .. tostring(broadcastChange) ..
+      ', broadcastChangeVerbosity ' .. tostring(broadcastChangeVerbosity) ..
+      ', pingMythos ' .. tostring(pingMythos))
   self.addContextMenuItem("Toggle Broadcasting", updateBroadcast)
   self.addContextMenuItem("Toggle Verbosity Broadcasting", updateBroadcastVerbosity)
-  self.addContextMenuItem("Toggle Ping Mythos Area", togglePingMythos)
+  self.addContextMenuItem("Toggle Ping Mythos Area", togglePing)
+
+  -- detect player mats
+  local mats = {}
+  table.insert(mats, getObjectByName('Playermat 1: White'))
+  table.insert(mats, getObjectByName('Playermat 2: Orange'))
+  table.insert(mats, getObjectByName('Playermat 3: Green'))
+  table.insert(mats, getObjectByName('Playermat 4: Red'))
+  log('Found ' .. size(mats) .. ' player mats')
 end
 
 function updateBroadcast(playerColor)
@@ -86,7 +99,7 @@ function updateBroadcastVerbosity(playerColor)
 broadcastToAll("Broadcasting phase changes in (Verbosity mode) has been " .. (broadcastChangeVerbosity and "enabled." or "disabled."))
 end
 
-function togglePingMythos(playerColor)
+function togglePing(playerColor)
   -- Changes (toggles)
   Player[playerColor].clearSelectedObjects()
   for _, tracker in ipairs(getObjectsWithTag("LinkedPhaseTracker")) do
@@ -100,7 +113,6 @@ function togglePingMythos(playerColor)
   broadcastToAll("Broadcasting phase changes in (Verbosity mode) has been " ..
   (broadcastChangeVerbosity and "enabled" or "disabled") .. 'and the Phase Tracker will bring you to the Mythos Area.')
 end
-
 
 function changeState(_, player_clicker_color, isRightClick)
   -- get newId for all trackers
@@ -117,9 +129,14 @@ function changeState(_, player_clicker_color, isRightClick)
   elseif broadcastChangeVerbosity then
     expressChangeWithVerbosity(newId)
     if pingMythos and newId == 1 then
-      pingMythosF(player_clicker_color)
+      pingMythosPhase(player_clicker_color)
+    elseif pingMythos and newId == 2 then
+      print(_)
+      print(player_clicker_color)
+      print(isRightClick)
+      pingPlayerMiniCards(player_clicker_color)
     end
-  end
+  end 
 
   -- 
   local data = self.getData()
@@ -162,51 +179,36 @@ function expressChangeWithVerbosity(newId)
     local a = 1 / 0 -- Force error  
   end
 
-  -- print(size(dmd))
-  -- print(size(amd))
-
-
   -- Acording to the phase and Agenda, show some messages
   if newId == 1 then
     broadcastToAll('End of the round')
     broadcastEndOfPhaseEffects(dmd.id, 4)
-    broadcastEndOfPhaseEffects(amd.id, 4)
-
     broadcastToAll('Mythos Phase begins', {r=1, g=0, b=0})
     broadcastStartOfPhaseEffects(dmd.id, 1, {r = 1, g = 0, b = 0})
-    broadcastStartOfPhaseEffects(amd.id, 1, { r = 1, g = 0, b = 0 })
-  
+    
   elseif newId == 2 then
     broadcastToAll('End of Mythos Phase', {r=1, g=0, b=0})
-    broadcastEndOfPhaseEffects(dmd.id, 1, { r = 1, g = 0, b = 0 })
     broadcastEndOfPhaseEffects(amd.id, 1, { r = 1, g = 0, b = 0 })
-
     broadcastToAll('Investigation Phase begins.', {r=1, g=1, b=0})
-    broadcastStartOfPhaseEffects(dmd.id, 2, {r = 1, g = 1, b = 0})
     broadcastStartOfPhaseEffects(amd.id, 2, {r = 1, g = 1, b = 0})
     showHandResourceInfo({ r = 1, g = 1, b = 0 })
     
   elseif newId == 3 then
     broadcastToAll('End of Investigation Phase', {r=1, g=1, b=0})
     broadcastEndOfPhaseEffects(dmd.id, 2, { r = 1, g = 1, b = 0 })
-    broadcastEndOfPhaseEffects(amd.id, 2, { r = 1, g = 1, b = 0 })
-
     broadcastToAll('Enemy Phase begins.', {r=0, g=1, b=0})
-    broadcastStartOfPhaseEffects(dmd.id, 2, { r = 0, g = 1, b = 0 })
-    broadcastStartOfPhaseEffects(amd.id, 2, { r = 0, g = 1, b = 0 })
+    broadcastStartOfPhaseEffects(dmd.id, 3, { r = 0, g = 1, b = 0 })
 
   elseif newId == 4 then
     broadcastToAll('End of Enemy Phase', {r=0, g=1, b=0})
     broadcastEndOfPhaseEffects(dmd.id, 3)
-
     broadcastToAll('Upkeep Phase begins.', {r=1, g=1, b=0})
+    broadcastStartOfPhaseEffects(dmd.id, 4, { r = 0, g = 1, b = 0 })
   end
 end
 
-
-function pingMythosF(player_clicker_color)
-  pl = Player.getPlayers()[1]
-  -- pl should be the clicker 
+function pingMythosPhase(player_clicker_color)
+  pl = getPlayer(player_clicker_color)
   all = getObjects()
   for _, obj in ipairs(all) do
     if obj.name == 'Doom Counter' or obj.getName() == 'Doom Counter' then
@@ -216,6 +218,111 @@ function pingMythosF(player_clicker_color)
     end
   end
 end
+
+function pingPlayerMiniCards(player_clicker_color)
+  log('pingPlayerMiniCards')
+  all = getObjects()
+  pl = getPlayer(player_clicker_color)
+  found = 0
+  for _, obj in ipairs(all) do
+    if obj.type == 'Card' then
+      if string.find(obj.getGMNotes(), 'Minicard') or obj.hasTag('Minicard') then
+        pos = obj.getPosition()
+        pl.pingTable(pos)
+        found = found + 1
+        if found == 1 then pl.lookAt({position=pos, pitch= 80, yaw=90}) end -- Look at one of them
+      end
+    end
+  end
+end
+
+function showHandResourceInfo(color)
+  color = color or { r = 1, g = 1, b = 1 }
+  -- This shows how many cards and resources has every MatPlayer
+  local matColors = Player.getAvailableColors()
+  for _, matColor in ipairs(matColors) do
+    local player = Player[matColor]
+    local cards = player.getHandObjects(1)
+    local num = #cards
+    local resources = PlayermatApi.getCounterValue(matColor, "ResourceCounter")
+    printToAll(matColor .. ' has ' .. num .. ' cards in hand and ' .. resources .. ' resources.', color)
+  end
+end
+
+
+-- Tables with info about effects
+
+local endOfPhaseEffects = {
+  ["01107"] = {
+    [3] = { message = "Agenda: Forced - At the end of the enemy phase: Each unengaged Ghoul enemy moves 1 location towards the Parlor." },
+    [4] = { message = "Agenda: Forced - At the end of the round: Place 1 doom on this agenda for each Ghoul enemy in the Hallway or Parlor." }
+  },
+  ["01109"] = {
+    [4] = { message = "The Act says: When the round ends, investigators in the hallway may, as a group, spend the requisite number of clues to advance." }
+  },
+  ["03048"] = {
+    [4] = { message = "Act: Forced - At the end of the round: Place 1 horror on each location with no horror that is connected to a location with horror." }
+  },
+
+  ["03121"] = {
+    [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
+  },
+  ["03122"] = {
+    [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
+  },
+  ["03123"] = {
+    [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
+  },
+  ["03045"] = {
+    [3] = { message = "Emmissary:Forced - At the end of the enemy phase: Each investigator at Royal Emissary's location or a connecting location takes 1 horror." }
+  }
+}
+
+local StartOfPhaseEffects = {
+  ["01144"] = {
+    [2] = { message = "Agenda:Each enemy gets +1 fight and +1 evade." }
+  },
+  ["03121"] = {
+    [1] = { message = "Do not add doom to the doom counter" }
+  },
+  ["03122"] = {
+    [1] = { message = "Do not add doom to the doom counter" }
+  },
+  ["03123"] = {
+    [1] = { message = "Do not add doom to the doom counter" }
+  },
+  ["03063"] = {
+    [3] = { message = "Dianne Forced - Forced - At the beginning of the enemy phase: Find the Bystander asset with the fewest clues on it. Move Dianne Devine to that asset's location, if able." }
+  }
+}
+
+function broadcastEndOfPhaseEffects(id, phase, color)
+  color = color or { r = 1, g = 1, b = 1 }
+  --
+  local pair_number_message = endOfPhaseEffects[id]
+  if pair_number_message then
+    local message = pair_number_message[phase]
+    if message then
+      broadcastToAll(message.message)
+    end
+  end
+  return nil -- no encontrado
+end
+
+function broadcastStartOfPhaseEffects(id, phase, color)
+  color = color or { r = 1, g = 1, b = 1 }
+  --
+  local pair_number_message = StartOfPhaseEffects[id]
+  if pair_number_message then
+    local message = pair_number_message[phase]
+    if message then
+      broadcastToAll(message.message)
+    end
+  end
+  return nil -- no encontrado
+end
+
+-- Copied
 
 function getDoomMetadata()
   -- This takes the metadata of the Agenda Card
@@ -238,7 +345,6 @@ function getDoomMetadata()
   return {}
 end
 
-
 function getActMetadata()
   -- This takes the metadata of the ACT Card
   local actPos = MythosAreaApi.getActPosition()
@@ -259,88 +365,32 @@ function getActMetadata()
 end
 
 
-function showHandResourceInfo(color)
-  color = color or {r=1, g=1, b=1}
-  -- This shows how many cards and resources has every MatPlayer
-  local matColors = Player.getAvailableColors()
-  for _, matColor in ipairs(matColors) do
-    local player = Player[matColor]
-    local cards = player.getHandObjects(1)
-    local num = #cards
-    local resources = PlayermatApi.getCounterValue(matColor, "ResourceCounter")
-    printToAll(matColor .. ' has '  .. num .. ' cards in hand and ' .. resources .. ' resources.', color)
-  end
-end
 
-local endOfPhaseEffects = {
-  ["01107"] = {
-        [3] = { message = "Agenda: Forced - At the end of the enemy phase: Each unengaged Ghoul enemy moves 1 location towards the Parlor." },
-        [4] = { message = "Agenda: Forced - At the end of the round: Place 1 doom on this agenda for each Ghoul enemy in the Hallway or Parlor." }
-    },
-  ["01109"] = {
-        [4] = { message = "The Act says: When the round ends, investigators in the hallway may, as a group, spend the requisite number of clues to advance." }
-    },
-  ["03048"] = {
-    [4] = { message = "Act: Forced - At the end of the round: Place 1 horror on each location with no horror that is connected to a location with horror." }
-    },
-
-  ["03121"] = {
-        [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
-    },
-  ["03122"] = {
-        [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
-    },
-    ["03123"] = {
-        [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
-    },
-    ["03045"] = {
-    [3] = { message = "Emmissary:Forced - At the end of the enemy phase: Each investigator at Royal Emissary's location or a connecting location takes 1 horror." }
-    }
-}
-
-local StartOfPhaseEffects = {
-  ["01144"] = {
-    [2] = { message = "Agenda:Each enemy gets +1 fight and +1 evade." }
-  },
-["03121"] = {
-      [1] = { message = "Do not add doom to the doom counter" }
-  },
-  ["03122"] = {
-      [1] = { message = "Do not add doom to the doom counter" }
-  },
-  ["03123"] = {
-      [1] = { message = "Do not add doom to the doom counter" }
-  }
-}
-
-function broadcastEndOfPhaseEffects(id, phase, color)
-  color = color or {r=1, g=1, b=1}
-  --
-  local pair_number_message = endOfPhaseEffects[id]
-  if pair_number_message then
-    local message = pair_number_message[phase]
-    if message then
-      broadcastToAll(message.message)
-    end
-  end
-  return nil -- no encontrado
-end
-
-function broadcastStartOfPhaseEffects(id, phase, color)
-  color = color or {r=1, g=1, b=1}
-  --
-  local pair_number_message = StartOfPhaseEffects[id]
-  if pair_number_message then
-    local message = pair_number_message[phase]
-    if message then
-      broadcastToAll(message.message)
-    end
-  end
-  return nil -- no encontrado
-end
+-- Aux
 
 function size(container)
   local count = 0
   for _ in pairs(container) do count = count + 1 end
   return count 
+end
+
+function getPlayer(color)
+  log('getPlayer called for color ' .. color)
+  for _, pl in ipairs(Player.getPlayers()) do
+    if pl.color == color then
+      log('getPlayer found')
+      return pl
+    end
+  end
+  return nil
+end
+
+
+function getObjectByName(name)
+  for _, obj in ipairs(getObjects()) do
+    if obj.getName() == name then
+      return obj
+    end
+  end
+  return nil
 end

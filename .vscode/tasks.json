@@ -60,6 +60,17 @@
         "cwd": "${workspaceFolder}${pathSeparator}..${pathSeparator}TTSModManager"
       },
       "problemMatcher": []
-    }
+    },
+{
+  "label": "Extract LuaScript to L.lua",
+  "type": "shell",
+  "command": "powershell",
+  "args": [
+    "-NoProfile",
+    "-Command",
+    "(Get-Content '${file}') -match '\"LuaScript\"' | ForEach-Object { $_ -replace '.*\"LuaScript\"\\s*:\\s*\"','' -replace '\"$','' } | Out-File -Encoding utf8 '${workspaceFolder}\\L.lua'"
+  ],
+  "problemMatcher": []
+}
   ]
 }
