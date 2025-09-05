@@ -131,12 +131,10 @@ function changeState(_, player_clicker_color, isRightClick)
     if pingMythos and newId == 1 then
       pingMythosPhase(player_clicker_color)
     elseif pingMythos and newId == 2 then
-      print(_)
-      print(player_clicker_color)
-      print(isRightClick)
       pingPlayerMiniCards(player_clicker_color)
     end
   end 
+
 
   -- 
   local data = self.getData()
@@ -178,11 +176,17 @@ function expressChangeWithVerbosity(newId)
   if type(dmd) ~= "table" then
     local a = 1 / 0 -- Force error  
   end
+  
+  if dmd.id == nil then dmd.id = "0" end
+  if amd.id == nil then amd.id = "0" end  
 
   -- Acording to the phase and Agenda, show some messages
   if newId == 1 then
     broadcastToAll('End of the round')
+    log('Doom Metadata: ' .. JSON.encode(dmd))
+    log('Act Metadata: ' .. JSON.encode(amd))
     broadcastEndOfPhaseEffects(dmd.id, 4)
+    log('calling broadcastEndOfPhaseEffects for phase 4 and id ' .. dmd.id)
     broadcastToAll('Mythos Phase begins', {r=1, g=0, b=0})
     broadcastStartOfPhaseEffects(dmd.id, 1, {r = 1, g = 0, b = 0})
     
@@ -214,7 +218,7 @@ function pingMythosPhase(player_clicker_color)
     if obj.name == 'Doom Counter' or obj.getName() == 'Doom Counter' then
       pos = obj.getPosition()
       pl.pingTable(pos)
-      pl.lookAt({position=pos, pitch= 80, yaw=90})
+      pl.lookAt({ position = pos, pitch = 90, yaw = 90, distance = 30 })
     end
   end
 end
@@ -230,7 +234,7 @@ function pingPlayerMiniCards(player_clicker_color)
         pos = obj.getPosition()
         pl.pingTable(pos)
         found = found + 1
-        if found == 1 then pl.lookAt({position=pos, pitch= 80, yaw=90}) end -- Look at one of them
+        if found == 1 then pl.lookAt({position=pos, pitch= 90, yaw=90, distance=30}) end -- Look at one of them
       end
     end
   end
@@ -258,7 +262,7 @@ local endOfPhaseEffects = {
     [4] = { message = "Agenda: Forced - At the end of the round: Place 1 doom on this agenda for each Ghoul enemy in the Hallway or Parlor." }
   },
   ["01109"] = {
-    [4] = { message = "The Act says: When the round ends, investigators in the hallway may, as a group, spend the requisite number of clues to advance." }
+    [4] = { message = "When the round ends, investigators in the hallway may, as a group, spend the requisite number of clues to advance." }
   },
   ["03048"] = {
     [4] = { message = "Act: Forced - At the end of the round: Place 1 horror on each location with no horror that is connected to a location with horror." }
