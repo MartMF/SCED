@@ -10,6 +10,13 @@ if (-Not (Test-Path $JsonFile)) {
 # Get the folder where the script is being run
 $scriptFolder = Get-Location
 
+# Get the base name without extension
+$baseName = [System.IO.Path]::GetFileNameWithoutExtension($JsonFile)
+
+# Create new filename
+$newFileName = "LUAcoding$baseName.txt"
+$outFile = Join-Path $scriptFolder $newFileName
+
 # Extract LuaScript string (keeps escaped sequences)
 $rawContent = Get-Content $JsonFile | ForEach-Object {
     if ($_ -match '"LuaScript"\s*:\s*"((?:\\.|[^"])*)"' ) {
@@ -24,8 +31,7 @@ $decoded = $decoded -replace '\\r', "`r"
 $decoded = $decoded -replace '\\"', '"'
 $decoded = $decoded -replace '\\\\', '\'
 
-# Save to file.txt in script folder
-$outFile = Join-Path $scriptFolder "file.txt"
+# Save to new filename
 $decoded | Set-Content $outFile -Encoding UTF8
 
 Write-Host "Readable LuaScript saved to $outFile"

@@ -1,8 +1,12 @@
 -- when you add another property, you have to edit the onSave, the .json file with the LuaScriptState
--- and the part when you send the current data to re-create the elements, that is, the
+-- and the part when you send the current data to re-create the elements, that is, the 
 -- 'manipulate data and then respawn'
 
-local PlayermatApi  = require("playermat/PlayermatApi")
+local PlayermatApi     = require("playermat/PlayermatApi")
+local MythosAreaApi    = require("mythos/MythosAreaApi")
+local SearchLib        = require("util/SearchLib")
+
+
 
 local PHASE_NAMES = {
   "I. Mythos Phase",
@@ -40,7 +44,7 @@ function onLoad(savedData)
     broadcastChange = false
     broadcastChangeVerbosity = false
     pingMythos = false
-  end
+    end
 
   self.createButton({
     tooltip        = "change phase",
@@ -48,13 +52,13 @@ function onLoad(savedData)
     function_owner = self,
     width          = 600,
     height         = 600,
-    matColor       = { r = 0, g = 0, b = 0, a = 0 }
+    matColor          = { r = 0, g = 0, b = 0, a = 0 }
   })
 
   log('PhaseTracker loaded with phaseId ' .. phaseId ..
-    ', broadcastChange ' .. tostring(broadcastChange) ..
-    ', broadcastChangeVerbosity ' .. tostring(broadcastChangeVerbosity) ..
-    ', pingMythos ' .. tostring(pingMythos))
+      ', broadcastChange ' .. tostring(broadcastChange) ..
+      ', broadcastChangeVerbosity ' .. tostring(broadcastChangeVerbosity) ..
+      ', pingMythos ' .. tostring(pingMythos))
   self.addContextMenuItem("Toggle Broadcasting", updateBroadcast)
   self.addContextMenuItem("Toggle Verbosity Broadcasting", updateBroadcastVerbosity)
   self.addContextMenuItem("Toggle Ping Mythos Area", togglePing)
@@ -65,6 +69,7 @@ function onLoad(savedData)
   table.insert(mats, getObjectByName('Playermat 2: Orange'))
   table.insert(mats, getObjectByName('Playermat 3: Green'))
   table.insert(mats, getObjectByName('Playermat 4: Red'))
+  log('Found ' .. size(mats) .. ' player mats')
 end
 
 function updateBroadcast(playerColor)
@@ -91,8 +96,7 @@ function updateBroadcastVerbosity(playerColor)
       tracker.setVar("broadcastChange", true)
     end
   end
-  broadcastToAll("Broadcasting phase changes in (Verbosity mode) has been " ..
-  (broadcastChangeVerbosity and "enabled." or "disabled."))
+broadcastToAll("Broadcasting phase changes in (Verbosity mode) has been " .. (broadcastChangeVerbosity and "enabled." or "disabled."))
 end
 
 function togglePing(playerColor)
@@ -107,7 +111,7 @@ function togglePing(playerColor)
     end
   end
   broadcastToAll("Broadcasting phase changes in (Verbosity mode) has been " ..
-    (broadcastChangeVerbosity and "enabled" or "disabled") .. 'and the Phase Tracker will bring you to the Mythos Area.')
+  (broadcastChangeVerbosity and "enabled" or "disabled") .. 'and the Phase Tracker will bring you to the Mythos Area.')
 end
 
 function changeState(_, player_clicker_color, isRightClick)
@@ -129,10 +133,10 @@ function changeState(_, player_clicker_color, isRightClick)
     elseif pingMythos and newId == 2 then
       pingPlayerMiniCards(player_clicker_color)
     end
-  end
+  end 
 
 
-  --
+  -- 
   local data = self.getData()
   data["CustomImage"]["ImageURL"] = PHASE_IMAGES[newId]
   data["CustomImage"]["ImageSecondaryURL"] = PHASE_IMAGES[newId]
@@ -140,11 +144,11 @@ function changeState(_, player_clicker_color, isRightClick)
       tostring(broadcastChange) ..
       ",\"phaseId\":" .. newId ..
       ",\"broadcastChangeVerbosity\":" ..
-      tostring(broadcastChangeVerbosity) ..
+      tostring(broadcastChangeVerbosity) .. 
       ",\"pingMythos\":" ..
       tostring(pingMythos) ..
       "}"
-
+    
   -- update all trackers with tag
   for i, tracker in ipairs(getObjectsWithTag("LinkedPhaseTracker")) do
     local pos = tracker.getPosition()
@@ -164,23 +168,46 @@ end
 
 function expressChangeWithVerbosity(newId)
   -- This function shows every change in the Phase tracker
+  -- And some events related to the game
 
+  -- Load data of the Agenda Card
+  dmd = getDoomMetadata()
+  amd = getActMetadata()
+  if type(dmd) ~= "table" then
+    local a = 1 / 0 -- Force error  
+  end
+  
+  if dmd.id == nil then dmd.id = "0" end
+  if amd.id == nil then amd.id = "0" end  
 
   -- Acording to the phase and Agenda, show some messages
   if newId == 1 then
-    print('End of the round')
-    print("\n-------\n")
-    broadcastToAll('Mythos Phase', { r = 1, g = 0, b = 0 })
+    broadcastToAll('End of the round')
+    log('Doom Metadata: ' .. JSON.encode(dmd))
+    log('Act Metadata: ' .. JSON.encode(amd))
+    broadcastEndOfPhaseEffects(dmd.id, 4)
+    log('calling broadcastEndOfPhaseEffects for phase 4 and id ' .. dmd.id)
+    broadcastToAll('Mythos Phase begins', {r=1, g=0, b=0})
+    broadcastStartOfPhaseEffects(dmd.id, 1, {r = 1, g = 0, b = 0})
+    
   elseif newId == 2 then
-    print('End of Mythos Phase', { r = 1, g = 0, b = 0 })
-    broadcastToAll('Investigation Phase.', { r = 1, g = 1, b = 0.8 })
-    showHandResourceInfo()
+    broadcastToAll('End of Mythos Phase', {r=1, g=0, b=0})
+    broadcastEndOfPhaseEffects(amd.id, 1, { r = 1, g = 0, b = 0 })
+    broadcastToAll('Investigation Phase begins.', {r=1, g=1, b=0})
+    broadcastStartOfPhaseEffects(amd.id, 2, {r = 1, g = 1, b = 0})
+    showHandResourceInfo({ r = 1, g = 1, b = 0 })
+    
   elseif newId == 3 then
-    broadcastToAll('End of Investigation Phase', { r = 1, g = 1, b = 0 })
-    broadcastToAll('Enemy Phase begins.', { r = 0, g = 1, b = 0 })
+    broadcastToAll('End of Investigation Phase', {r=1, g=1, b=0})
+    broadcastEndOfPhaseEffects(dmd.id, 2, { r = 1, g = 1, b = 0 })
+    broadcastToAll('Enemy Phase begins.', {r=0, g=1, b=0})
+    broadcastStartOfPhaseEffects(dmd.id, 3, { r = 0, g = 1, b = 0 })
+
   elseif newId == 4 then
-    broadcastToAll('End of Enemy Phase', { r = 0, g = 1, b = 0 })
-    broadcastToAll('Upkeep Phase begins.', { r = 1, g = 1, b = 0 })
+    broadcastToAll('End of Enemy Phase', {r=0, g=1, b=0})
+    broadcastEndOfPhaseEffects(dmd.id, 3)
+    broadcastToAll('Upkeep Phase begins.', {r=1, g=1, b=0})
+    broadcastStartOfPhaseEffects(dmd.id, 4, { r = 0, g = 1, b = 0 })
   end
 end
 
@@ -207,18 +234,17 @@ function pingPlayerMiniCards(player_clicker_color)
         pos = obj.getPosition()
         pl.pingTable(pos)
         found = found + 1
-        if found == 1 then pl.lookAt({ position = pos, pitch = 90, yaw = 90, distance = 30 }) end -- Look at one of them
+        if found == 1 then pl.lookAt({position=pos, pitch= 90, yaw=90, distance=30}) end -- Look at one of them
       end
     end
   end
 end
 
-function showHandResourceInfo()
-  local COLORS = { White = { 1, 1, 1 }, Orange = { 1, 0.5, 0 }, Green = { 0, 1, 0 }, Red = { 1, 0, 0 } }
+function showHandResourceInfo(color)
+  color = color or { r = 1, g = 1, b = 1 }
   -- This shows how many cards and resources has every MatPlayer
   local matColors = Player.getAvailableColors()
   for _, matColor in ipairs(matColors) do
-    local color = COLORS[matColor] or {1, 1, 1}
     local player = Player[matColor]
     local cards = player.getHandObjects(1)
     local num = #cards
@@ -227,14 +253,142 @@ function showHandResourceInfo()
   end
 end
 
+
+-- Tables with info about effects
+
+local endOfPhaseEffects = {
+  ["01107"] = {
+    [3] = { message = "Agenda: Forced - At the end of the enemy phase: Each unengaged Ghoul enemy moves 1 location towards the Parlor." },
+    [4] = { message = "Agenda: Forced - At the end of the round: Place 1 doom on this agenda for each Ghoul enemy in the Hallway or Parlor." }
+  },
+  ["01109"] = {
+    [4] = { message = "When the round ends, investigators in the hallway may, as a group, spend the requisite number of clues to advance." }
+  },
+  ["03048"] = {
+    [4] = { message = "Act: Forced - At the end of the round: Place 1 horror on each location with no horror that is connected to a location with horror." }
+  },
+
+  ["03121"] = {
+    [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
+  },
+  ["03122"] = {
+    [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
+  },
+  ["03123"] = {
+    [1] = { message = "Look if any of the cultists acts at the end of the Mythos phase" }
+  },
+  ["03045"] = {
+    [3] = { message = "Emmissary:Forced - At the end of the enemy phase: Each investigator at Royal Emissary's location or a connecting location takes 1 horror." }
+  }
+}
+
+local StartOfPhaseEffects = {
+  ["01144"] = {
+    [2] = { message = "Agenda:Each enemy gets +1 fight and +1 evade." }
+  },
+  ["03121"] = {
+    [1] = { message = "Do not add doom to the doom counter" }
+  },
+  ["03122"] = {
+    [1] = { message = "Do not add doom to the doom counter" }
+  },
+  ["03123"] = {
+    [1] = { message = "Do not add doom to the doom counter" }
+  },
+  ["03063"] = {
+    [3] = { message = "Dianne Forced - Forced - At the beginning of the enemy phase: Find the Bystander asset with the fewest clues on it. Move Dianne Devine to that asset's location, if able." }
+  }
+}
+
+function broadcastEndOfPhaseEffects(id, phase, color)
+  color = color or { r = 1, g = 1, b = 1 }
+  --
+  local pair_number_message = endOfPhaseEffects[id]
+  if pair_number_message then
+    local message = pair_number_message[phase]
+    if message then
+      broadcastToAll(message.message)
+    end
+  end
+  return nil -- no encontrado
+end
+
+function broadcastStartOfPhaseEffects(id, phase, color)
+  color = color or { r = 1, g = 1, b = 1 }
+  --
+  local pair_number_message = StartOfPhaseEffects[id]
+  if pair_number_message then
+    local message = pair_number_message[phase]
+    if message then
+      broadcastToAll(message.message)
+    end
+  end
+  return nil -- no encontrado
+end
+
+-- Copied
+
+function getDoomMetadata()
+  -- This takes the metadata of the Agenda Card
+  -- We use this to plot any kind of Phase effect of the Agenda Card
+  -- Yet to implement the Act
+  local agendaPos = MythosAreaApi.getAgendaPosition()
+  local searchResult = SearchLib.atPosition(agendaPos, "isCardOrDeck")
+
+  if #searchResult == 1 then
+    local obj = searchResult[1]
+    if obj.type == "Card" then
+      return JSON.decode(obj.getGMNotes()) or {}
+    else
+      -- handle agenda deck
+      local containedObjects = obj.getData().ContainedObjects
+      local topCardData = containedObjects[#containedObjects]
+      return JSON.decode(topCardData.GMNotes) or {}
+    end
+  end
+  return {}
+end
+
+function getActMetadata()
+  -- This takes the metadata of the ACT Card
+  local actPos = MythosAreaApi.getActPosition()
+  local searchResult = SearchLib.atPosition(actPos, "isCardOrDeck")
+
+  if #searchResult == 1 then
+    local obj = searchResult[1]
+    if obj.type == "Card" then
+      return JSON.decode(obj.getGMNotes()) or {}
+    else
+      -- handle deck
+      local containedObjects = obj.getData().ContainedObjects
+      local topCardData = containedObjects[#containedObjects]
+      return JSON.decode(topCardData.GMNotes) or {}
+    end
+  end
+  return {}
+end
+
+
+
+-- Aux
+
+function size(container)
+  local count = 0
+  for _ in pairs(container) do count = count + 1 end
+  return count 
+end
+
 function getPlayer(color)
+  log('getPlayer called for color ' .. color)
   for _, pl in ipairs(Player.getPlayers()) do
     if pl.color == color then
+      log('getPlayer found')
       return pl
     end
   end
   return nil
 end
+
 
 function getObjectByName(name)
   for _, obj in ipairs(getObjects()) do
