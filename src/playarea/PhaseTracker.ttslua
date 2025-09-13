@@ -51,10 +51,6 @@ function onLoad(savedData)
     matColor       = { r = 0, g = 0, b = 0, a = 0 }
   })
 
-  log('PhaseTracker loaded with phaseId ' .. phaseId ..
-    ', broadcastChange ' .. tostring(broadcastChange) ..
-    ', broadcastChangeVerbosity ' .. tostring(broadcastChangeVerbosity) ..
-    ', pingMythos ' .. tostring(pingMythos))
   self.addContextMenuItem("Toggle Broadcasting", toggleBroadcast)
   self.addContextMenuItem("Toggle Verbosity Broadcasting", toggleBroadcastVerbosity)
   self.addContextMenuItem("Toggle Ping Mythos Area", togglePing)
@@ -165,22 +161,22 @@ end
 function expressChangeWithVerbosity(newId)
   -- This function shows every change in the Phase tracker
 
+  local color_bone = { r = 1, g = 1, b = 0.8 }
 
-  -- Acording to the phase and Agenda, show some messages
   if newId == 1 then
-    print('End of the round')
-    print("\n-------\n")
+    printToAll('End of the round', color_bone)
+    printToAll("\n-------\n", color_bone)
     broadcastToAll('Mythos Phase', { r = 1, g = 0, b = 0 })
   elseif newId == 2 then
-    print('End of Mythos Phase', { r = 1, g = 0, b = 0 })
-    broadcastToAll('Investigation Phase.', { r = 1, g = 1, b = 0.8 })
+    printToAll('End of Mythos Phase', { r = 1, g = 0, b = 0 })
+    broadcastToAll('Investigation Phase.', color_bone)
     showHandResourceInfo()
   elseif newId == 3 then
-    broadcastToAll('End of Investigation Phase', { r = 1, g = 1, b = 0 })
-    broadcastToAll('Enemy Phase begins.', { r = 0, g = 1, b = 0 })
+    printToAll('End of Investigation Phase', color_bone)
+    printToAll('Enemy Phase.', color_bone)
   elseif newId == 4 then
-    broadcastToAll('End of Enemy Phase', { r = 0, g = 1, b = 0 })
-    broadcastToAll('Upkeep Phase begins.', { r = 1, g = 1, b = 0 })
+    printToAll('End of Enemy Phase', color_bone)
+    printToAll('Upkeep Phase.', color_bone)
   end
 end
 
@@ -197,7 +193,6 @@ function pingMythosPhase(player_clicker_color)
 end
 
 function pingPlayerMiniCards(player_clicker_color)
-  log('pingPlayerMiniCards')
   all = getObjects()
   pl = getPlayer(player_clicker_color)
   found = 0

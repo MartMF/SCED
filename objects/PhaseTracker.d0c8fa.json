@@ -34,7 +34,7 @@
   "LayoutGroupSortIndex": 0,
   "Locked": true,
   "LuaScript": "require(\"playarea/PhaseTracker\")",
-  "LuaScriptState_path": "PhaseTracker.d0c8fa.luascriptstate",
+  "LuaScriptState": "{\"phaseId\":1, \"broadcastChange\" : false, \"broadcastChangeVerbosity\": false, \"pingMythos\": false}",
   "MeasureMovement": false,
   "Name": "Custom_Tile",
   "Nickname": "Phase Tracker",
