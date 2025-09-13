@@ -2,9 +2,9 @@
 -- and the part when you send the current data to re-create the elements, that is, the
 -- 'manipulate data and then respawn'
 
-local PlayermatApi  = require("playermat/PlayermatApi")
+local PlayermatApi = require("playermat/PlayermatApi")
 
-local PHASE_NAMES = {
+local PHASE_NAMES  = {
   "I. Mythos Phase",
   "II. Investigation Phase",
   "III. Enemy Phase",
@@ -55,8 +55,8 @@ function onLoad(savedData)
     ', broadcastChange ' .. tostring(broadcastChange) ..
     ', broadcastChangeVerbosity ' .. tostring(broadcastChangeVerbosity) ..
     ', pingMythos ' .. tostring(pingMythos))
-  self.addContextMenuItem("Toggle Broadcasting", updateBroadcast)
-  self.addContextMenuItem("Toggle Verbosity Broadcasting", updateBroadcastVerbosity)
+  self.addContextMenuItem("Toggle Broadcasting", toggleBroadcast)
+  self.addContextMenuItem("Toggle Verbosity Broadcasting", toggleBroadcastVerbosity)
   self.addContextMenuItem("Toggle Ping Mythos Area", togglePing)
 
   -- detect player mats
@@ -67,7 +67,7 @@ function onLoad(savedData)
   table.insert(mats, getObjectByName('Playermat 4: Red'))
 end
 
-function updateBroadcast(playerColor)
+function toggleBroadcast(playerColor)
   -- Changes (toggles) the if the phase changes are broadcast or not
   Player[playerColor].clearSelectedObjects()
   for _, tracker in ipairs(getObjectsWithTag("LinkedPhaseTracker")) do
@@ -81,7 +81,7 @@ function updateBroadcast(playerColor)
   broadcastToAll("Broadcasting phase changes has been " .. (broadcastChange and "enabled." or "disabled."))
 end
 
-function updateBroadcastVerbosity(playerColor)
+function toggleBroadcastVerbosity(playerColor)
   -- Changes (toggles) the if the phase changes are broadcast with a lot of verbosity or not
   Player[playerColor].clearSelectedObjects()
   for _, tracker in ipairs(getObjectsWithTag("LinkedPhaseTracker")) do
@@ -92,7 +92,7 @@ function updateBroadcastVerbosity(playerColor)
     end
   end
   broadcastToAll("Broadcasting phase changes in (Verbosity mode) has been " ..
-  (broadcastChangeVerbosity and "enabled." or "disabled."))
+    (broadcastChangeVerbosity and "enabled." or "disabled."))
 end
 
 function togglePing(playerColor)
@@ -218,7 +218,7 @@ function showHandResourceInfo()
   -- This shows how many cards and resources has every MatPlayer
   local matColors = Player.getAvailableColors()
   for _, matColor in ipairs(matColors) do
-    local color = COLORS[matColor] or {1, 1, 1}
+    local color = COLORS[matColor] or { 1, 1, 1 }
     local player = Player[matColor]
     local cards = player.getHandObjects(1)
     local num = #cards
